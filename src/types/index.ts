@@ -19,9 +19,13 @@ export interface TeamMember {
 export interface Client {
   id: string;
   name: string;
-  avatar?: string;
-  activeProjects: number;
+  contactPerson: string;
+  phone: string;
   email: string;
+  activeProjects: number;
+  lastFollowUp: string;
+  nextFollowUp: string;
+  notes: string;
 }
 
 export interface ActivityItem {
