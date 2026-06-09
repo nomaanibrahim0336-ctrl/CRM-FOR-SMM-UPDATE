@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { mockProjects } from '../data/mockData';
 import Button from '../components/common/Button';
+import ProjectDetailPanel from '../components/ProjectDetailPanel';
+import type { Project, Stage } from '../types';
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -36,6 +38,8 @@ export default function CalendarView() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [projects, setProjects] = useState(mockProjects);
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
@@ -50,9 +54,22 @@ export default function CalendarView() {
     else setMonth(m => m + 1);
   };
 
+  const handleStageChange = (projectId: string, newStage: Stage) => {
+    setProjects(prev =>
+      prev.map(p =>
+        p.id === projectId
+          ? { ...p, stage: newStage, lastUpdated: new Date().toISOString().split('T')[0] }
+          : p
+      )
+    );
+    if (selectedProject?.id === projectId) {
+      setSelectedProject(prev => prev ? { ...prev, stage: newStage } : null);
+    }
+  };
+
   // Build event map: key = "YYYY-MM-DD", value = Project[]
-  const eventMap: Record<string, typeof mockProjects> = {};
-  mockProjects.forEach(p => {
+  const eventMap: Record<string, typeof projects> = {};
+  projects.forEach(p => {
     if (!eventMap[p.deadline]) eventMap[p.deadline] = [];
     eventMap[p.deadline].push(p);
   });
@@ -61,7 +78,6 @@ export default function CalendarView() {
   const cells: (number | null)[] = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-  // Pad end to complete last row
   while (cells.length % 7 !== 0) cells.push(null);
 
   const formatDateKey = (d: number) => {
@@ -105,7 +121,12 @@ export default function CalendarView() {
                 if (p.stage === 'published' || p.stage === 'approved') cls += ' done';
                 else if (isDeadlineUrgent(p.deadline) || isDeadlinePast(p.deadline)) cls += ' urgent';
                 return (
-                  <div key={p.id} className={cls} title={`${p.title} — ${p.clientName}`}>
+                  <div
+                    key={p.id}
+                    className={cls}
+                    title={`${p.title} — ${p.clientName}`}
+                    onClick={() => setSelectedProject(p)}
+                  >
                     {p.title}
                   </div>
                 );
@@ -130,6 +151,12 @@ export default function CalendarView() {
           <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Completed</span>
         </div>
       </div>
+
+      <ProjectDetailPanel
+        project={selectedProject}
+        onClose={() => setSelectedProject(null)}
+        onStageChange={handleStageChange}
+      />
     </div>
   );
 }

@@ -7,13 +7,8 @@ interface ProjectCardProps {
   onSelect: (project: Project) => void;
 }
 
-function getInitials(name: string) {
-  return name
-    .split(' ')
-    .map(n => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+function getInitial(name: string) {
+  return name.charAt(0).toUpperCase();
 }
 
 function getAvatarColor(name: string) {
@@ -26,18 +21,19 @@ function getAvatarColor(name: string) {
   return colors[Math.abs(hash) % colors.length];
 }
 
-function formatDeadline(dateStr: string) {
+function getDeadlineStyle(dateStr: string): { text: string; color: string } {
   const d = new Date(dateStr);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const diff = Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff < 0) return { text: `Overdue by ${Math.abs(diff)}d`, urgent: true };
-  if (diff === 0) return { text: 'Due today', urgent: true };
-  if (diff <= 3) return { text: `Due in ${diff}d`, urgent: true };
-  return {
-    text: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    urgent: false,
-  };
+  const text = diff < 0
+    ? `Overdue ${Math.abs(diff)}d`
+    : diff === 0
+    ? 'Due today'
+    : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const color =
+    diff <= 3 ? 'var(--alert)' : diff <= 7 ? 'var(--warning)' : 'var(--text-secondary)';
+  return { text, color };
 }
 
 export default function ProjectCard({ project, onSelect }: ProjectCardProps) {
@@ -55,7 +51,7 @@ export default function ProjectCard({ project, onSelect }: ProjectCardProps) {
     transition,
   };
 
-  const deadline = formatDeadline(project.deadline);
+  const deadline = getDeadlineStyle(project.deadline);
 
   return (
     <div
@@ -66,31 +62,48 @@ export default function ProjectCard({ project, onSelect }: ProjectCardProps) {
       {...attributes}
       {...listeners}
     >
+      {/* Client name with small circle initial */}
       <div className="client-info">
         <div
-          className="client-avatar"
-          style={{ background: getAvatarColor(project.clientName) }}
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: '50%',
+            background: getAvatarColor(project.clientName),
+            color: 'white',
+            fontSize: 10,
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
         >
-          {getInitials(project.clientName)}
+          {getInitial(project.clientName)}
         </div>
         <span className="client-name-text">{project.clientName}</span>
       </div>
 
-      <div className="project-title">{project.title}</div>
-
-      <div className="project-meta">
-        <div className="project-meta-row">
-          <span>📅</span>
-          <span style={{ color: deadline.urgent ? 'var(--alert)' : undefined, fontWeight: deadline.urgent ? 600 : undefined }}>
-            {deadline.text}
-          </span>
-        </div>
-        <div className="project-meta-row">
-          <span>👤</span>
-          <span>{project.assignedTo}</span>
-        </div>
+      {/* Project title */}
+      <div
+        className="project-title"
+        style={{
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          marginBottom: 8,
+        }}
+      >
+        {project.title}
       </div>
 
+      {/* Deadline */}
+      <div style={{ fontSize: 12, color: deadline.color, fontWeight: deadline.color !== 'var(--text-secondary)' ? 600 : undefined, marginBottom: 8 }}>
+        📅 {deadline.text}
+      </div>
+
+      {/* Progress bar + percentage */}
       <div className="progress-bar-wrap">
         <div
           className="progress-bar-fill"
@@ -98,16 +111,6 @@ export default function ProjectCard({ project, onSelect }: ProjectCardProps) {
         />
       </div>
       <div className="progress-text">{project.progress}%</div>
-
-      {project.tags.length > 0 && (
-        <div className="card-tags">
-          {project.tags.slice(0, 3).map(tag => (
-            <span key={tag} className="tag">{tag}</span>
-          ))}
-        </div>
-      )}
-
-      <div className="card-timestamp">Updated {project.lastUpdated}</div>
     </div>
   );
 }

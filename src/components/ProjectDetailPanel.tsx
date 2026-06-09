@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Project, Stage } from '../types';
 import StatusBadge from './StatusBadge';
 import Button from './common/Button';
@@ -42,6 +43,8 @@ export default function ProjectDetailPanel({
   onStageChange,
 }: ProjectDetailPanelProps) {
   const isOpen = project !== null;
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
 
   return (
     <>
@@ -56,9 +59,31 @@ export default function ProjectDetailPanel({
       <aside className={`detail-sidebar${isOpen ? ' open' : ''}`}>
         {project && (
           <>
+            {/* Header — sticky */}
             <div className="sidebar-header">
               <h2>{project.title}</h2>
               <button className="close-btn" onClick={onClose}>✕</button>
+            </div>
+
+            {/* Action buttons — sticky below header */}
+            <div className="actions-sticky">
+              {getNextStage(project.stage) && (
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    const next = getNextStage(project.stage);
+                    if (next) onStageChange(project.id, next);
+                    onClose();
+                  }}
+                >
+                  Move to Next Stage: {STAGE_LABELS[getNextStage(project.stage)!]}
+                </Button>
+              )}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button variant="secondary" size="sm">Add Comment</Button>
+                <Button variant="secondary" size="sm">Assign</Button>
+                <Button variant="secondary" size="sm">Edit</Button>
+              </div>
             </div>
 
             <div className="sidebar-body">
@@ -103,24 +128,14 @@ export default function ProjectDetailPanel({
                     <span className="meta-value">{project.projectManager}</span>
                   </div>
                   <div className="meta-item">
-                    <span className="meta-label">Assigned To</span>
-                    <span className="meta-value">{project.assignedTo}</span>
-                  </div>
-                  <div className="meta-item">
                     <span className="meta-label">Deadline</span>
                     <span className="meta-value">{project.deadline}</span>
-                  </div>
-                  <div className="meta-item">
-                    <span className="meta-label">Created</span>
-                    <span className="meta-value">{project.createdDate}</span>
                   </div>
                   <div className="meta-item">
                     <span className="meta-label">Progress</span>
                     <span className="meta-value">{project.progress}%</span>
                   </div>
                 </div>
-
-                {/* Progress bar */}
                 <div style={{ marginTop: 12 }}>
                   <div className="progress-bar-wrap">
                     <div
@@ -129,22 +144,13 @@ export default function ProjectDetailPanel({
                     />
                   </div>
                 </div>
-
-                {/* Tags */}
-                {project.tags.length > 0 && (
-                  <div className="card-tags" style={{ marginTop: 12 }}>
-                    {project.tags.map(tag => (
-                      <span key={tag} className="tag">{tag}</span>
-                    ))}
-                  </div>
-                )}
               </div>
 
               {/* Client Feedback */}
-              {project.feedback.length > 0 && (
-                <div className="sidebar-section">
-                  <h3>Client Feedback ({project.feedback.length})</h3>
-                  {project.feedback.map(f => (
+              <div className="sidebar-section">
+                <h3>Client Feedback {project.feedback.length > 0 ? `(${project.feedback.length})` : ''}</h3>
+                {project.feedback.length > 0 ? (
+                  project.feedback.map(f => (
                     <div key={f.id} className="feedback-item">
                       <div className={`feedback-priority priority-${f.priority}`} />
                       <div>
@@ -166,15 +172,22 @@ export default function ProjectDetailPanel({
                         <div className="feedback-text">{f.text}</div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  ))
+                ) : (
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>No feedback yet</p>
+                )}
+              </div>
 
-              {/* Stage History */}
+              {/* Stage History — collapsible */}
               {project.stageHistory.length > 0 && (
                 <div className="sidebar-section">
-                  <h3>Stage History</h3>
-                  {project.stageHistory.map((sh, idx) => (
+                  <button
+                    className="section-collapse-btn"
+                    onClick={() => setHistoryOpen(o => !o)}
+                  >
+                    {historyOpen ? '▾' : '▸'} Show History
+                  </button>
+                  {historyOpen && project.stageHistory.map((sh, idx) => (
                     <div key={idx} className="stage-history-item">
                       <div className="stage-history-name">
                         {STAGE_LABELS[sh.stage] || sh.stage}
@@ -190,50 +203,35 @@ export default function ProjectDetailPanel({
                 </div>
               )}
 
-              {/* Activity Feed */}
+              {/* Activity Feed — collapsible */}
               {project.activity.length > 0 && (
                 <div className="sidebar-section">
-                  <h3>Recent Activity</h3>
-                  <div className="activity-feed">
-                    {project.activity.map(a => (
-                      <div key={a.id} className="activity-item">
-                        <div className="activity-dot" />
-                        <div className="activity-content">
-                          <div className="activity-action">{a.action}</div>
-                          <div className="activity-meta">
-                            {a.date} at {a.time} · by {a.by}
+                  <button
+                    className="section-collapse-btn"
+                    onClick={() => setActivityOpen(o => !o)}
+                  >
+                    {activityOpen ? '▾' : '▸'} Show Activity
+                  </button>
+                  {activityOpen && (
+                    <div className="activity-feed" style={{ marginTop: 8 }}>
+                      {project.activity.map(a => (
+                        <div key={a.id} className="activity-item">
+                          <div className="activity-dot" />
+                          <div className="activity-content">
+                            <div className="activity-action">{a.action}</div>
+                            <div className="activity-meta">
+                              {a.date} at {a.time} · by {a.by}
+                            </div>
+                            {a.note && (
+                              <div className="activity-note">{a.note}</div>
+                            )}
                           </div>
-                          {a.note && (
-                            <div className="activity-note">{a.note}</div>
-                          )}
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
-
-              {/* Actions */}
-              <div className="sidebar-section">
-                <h3>Actions</h3>
-                <div className="sidebar-actions">
-                  {getNextStage(project.stage) && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => {
-                        const next = getNextStage(project.stage);
-                        if (next) onStageChange(project.id, next);
-                        onClose();
-                      }}
-                    >
-                      Move to {STAGE_LABELS[getNextStage(project.stage)!]}
-                    </Button>
-                  )}
-                  <Button variant="secondary" size="sm">Add Comment</Button>
-                  <Button variant="tertiary" size="sm">Share</Button>
-                </div>
-              </div>
             </div>
           </>
         )}

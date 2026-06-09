@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useProjects } from '../hooks/useProjects';
 import OverviewCards from '../components/OverviewCards';
-import StageFilters from '../components/StageFilters';
 import KanbanBoard from '../components/KanbanBoard';
 import ProjectDetailPanel from '../components/ProjectDetailPanel';
 import type { Project, Stage } from '../types';
@@ -14,8 +13,6 @@ interface DashboardProps {
 export default function Dashboard({ searchQuery }: DashboardProps) {
   const {
     projectsByStage,
-    stageFilter,
-    setStageFilter,
     updateProjectStage,
     stats,
   } = useProjects(searchQuery);
@@ -39,8 +36,6 @@ export default function Dashboard({ searchQuery }: DashboardProps) {
       </div>
 
       <OverviewCards stats={stats} />
-
-      <StageFilters activeFilter={stageFilter} setFilter={setStageFilter} />
 
       <KanbanBoard
         projectsByStage={projectsByStage}
