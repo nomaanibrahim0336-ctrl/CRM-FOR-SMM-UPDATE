@@ -1,4 +1,5 @@
-import { clients } from '../data/mockData';
+import { useState } from 'react';
+import { clients as initialClients } from '../data/mockData';
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
@@ -23,7 +24,39 @@ function daysUntil(dateStr: string) {
   return { label: `In ${diff}d`, color: 'var(--success)' };
 }
 
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function addDays(dateStr: string, days: number) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
 export default function ClientManagement() {
+  const [clients, setClients] = useState(initialClients);
+  const [loggedIds, setLoggedIds] = useState<Set<string>>(new Set());
+
+  const handleFollowUp = (clientId: string) => {
+    const today = todayStr();
+    setClients(prev =>
+      prev.map(c =>
+        c.id === clientId
+          ? { ...c, lastFollowUp: today, nextFollowUp: addDays(today, 7) }
+          : c
+      )
+    );
+    setLoggedIds(prev => new Set(prev).add(clientId));
+    setTimeout(() => {
+      setLoggedIds(prev => {
+        const next = new Set(prev);
+        next.delete(clientId);
+        return next;
+      });
+    }, 2000);
+  };
+
   return (
     <div className="main-content">
       <div className="page-header">
@@ -41,6 +74,7 @@ export default function ClientManagement() {
         {clients.map((client, idx) => {
           const color = AVATAR_COLORS[idx % AVATAR_COLORS.length];
           const followUp = daysUntil(client.nextFollowUp);
+          const logged = loggedIds.has(client.id);
 
           return (
             <div key={client.id} className="client-card">
@@ -147,11 +181,22 @@ export default function ClientManagement() {
                     lineHeight: 1.5,
                     borderLeft: '3px solid var(--color-primary)',
                     paddingLeft: 10,
+                    marginBottom: 12,
                   }}
                 >
                   {client.notes}
                 </div>
               )}
+
+              {/* Mark Followed Up button */}
+              <button
+                className="btn btn-secondary btn-sm"
+                style={{ width: '100%', justifyContent: 'center', color: logged ? 'var(--success)' : undefined }}
+                onClick={() => !logged && handleFollowUp(client.id)}
+                disabled={logged}
+              >
+                {logged ? '✓ Logged' : 'Mark Followed Up'}
+              </button>
             </div>
           );
         })}
